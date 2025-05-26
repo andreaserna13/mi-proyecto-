@@ -1,26 +1,26 @@
 const express = require('express');
-const cors = require('cors'); // Importamos cors
+const cors = require('cors');
 const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
 
 const app = express();
 
-// ✅ Configuración de CORS
+// ✅ Configuración de CORS (permite conexión desde el frontend)
 app.use(cors({
-  origin: 'http://localhost:5173', // Reemplaza si tu frontend está en otro puerto
+  origin: 'http://localhost:5173', // Cambia el puerto si tu frontend usa otro
   credentials: true,
 }));
 
-// Middleware para recibir JSON
+// ✅ Middleware para recibir JSON
 app.use(express.json());
 
-// Conexión a la base de datos
+// ✅ Conexión a la base de datos MySQL
 const sequelize = new Sequelize('gestion', 'root', '123456simon', {
   host: 'localhost',
   dialect: 'mysql',
 });
 
-// Definición del modelo Usuario
+// ✅ Definición del modelo Usuario
 const Usuario = sequelize.define('usuarios', {
   nombre: {
     type: DataTypes.STRING,
@@ -44,7 +44,12 @@ const Usuario = sequelize.define('usuarios', {
   timestamps: false,
 });
 
-// Ruta para iniciar sesión
+// ✅ Ruta principal para comprobar el estado del servidor
+app.get('/', (req, res) => {
+  res.send('🚀 Servidor de backend funcionando correctamente');
+});
+
+// ✅ Ruta para iniciar sesión
 app.post('/api/usuario/iniciar-sesion', async (req, res) => {
   const { nombre, contraseña } = req.body;
 
@@ -77,68 +82,73 @@ app.post('/api/usuario/iniciar-sesion', async (req, res) => {
   }
 });
 
-// ✅ Función para actualizar la contraseña de un usuario
-async function actualizarPassword(nombreUsuario, nuevaPassword) {
-  try {
-    await sequelize.authenticate();
-    console.log('Conectado a MySQL');
+// ✅ Ruta para crear un nuevo usuario desde el frontend (opcional)
+app.post('/api/usuario/registrar', async (req, res) => {
+  const { nombre, contraseña } = req.body;
 
+  if (!nombre || !contraseña) {
+    return res.status(400).json({ mensaje: 'Faltan datos obligatorios' });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(contraseña, 10);
+
+    const nuevoUsuario = await Usuario.create({
+      nombre,
+      contraseña: hashedPassword,
+      estado: 1,
+    });
+
+    res.status(201).json({ mensaje: 'Usuario creado correctamente', usuario: nuevoUsuario });
+  } catch (error) {
+    console.error('❌ Error al registrar el usuario:', error);
+    res.status(500).json({ mensaje: 'Error interno al crear el usuario' });
+  }
+});
+
+// ✅ Ruta para actualizar la contraseña de un usuario
+app.put('/api/usuario/actualizar-password', async (req, res) => {
+  const { nombre, nuevaPassword } = req.body;
+
+  if (!nombre || !nuevaPassword) {
+    return res.status(400).json({ mensaje: 'Faltan datos obligatorios' });
+  }
+
+  try {
     const hashedPassword = await bcrypt.hash(nuevaPassword, 10);
 
     const resultado = await Usuario.update(
       { contraseña: hashedPassword },
-      { where: { nombre: nombreUsuario } }
+      { where: { nombre } }
     );
 
     if (resultado[0] === 0) {
-      console.log('No se encontró el usuario para actualizar');
-    } else {
-      console.log('Contraseña actualizada correctamente');
+      return res.status(404).json({ mensaje: 'Usuario no encontrado para actualizar' });
     }
+
+    res.json({ mensaje: 'Contraseña actualizada correctamente' });
   } catch (error) {
     console.error('Error actualizando la contraseña:', error);
+    res.status(500).json({ mensaje: 'Error al actualizar la contraseña' });
   }
-}
+});
 
-// ✅ Función temporal para crear un nuevo usuario
-async function crearNuevoUsuario(nombreUsuario, clavePlano) {
-  try {
-    await sequelize.authenticate(); // Asegura conexión
-
-    const hashedPassword = await bcrypt.hash(clavePlano, 10);
-
-    await Usuario.create({
-      nombre: nombreUsuario,
-      contraseña: hashedPassword,
-      estado: 1, // activo por defecto
-    });
-
-    console.log(`✅ Usuario "${nombreUsuario}" creado correctamente`);
-  } catch (error) {
-    console.error('❌ Error al crear el usuario:', error);
-  }
-}
-
-// ✅ Iniciar servidor y sincronizar modelo
+// ✅ Iniciar el servidor
 async function startServer() {
   try {
     await sequelize.authenticate();
-    console.log('Conectado a MySQL');
+    console.log('✅ Conectado a MySQL');
 
     await Usuario.sync();
-    console.log('Modelo Usuario sincronizado');
+    console.log('✅ Modelo Usuario sincronizado');
 
     const PORT = 3001;
     app.listen(PORT, () => {
-      console.log(`Servidor corriendo en http://localhost:${PORT}`);
+      console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('Error al iniciar el servidor:', error);
+    console.error('❌ Error al iniciar el servidor:', error);
   }
 }
 
-// ✅ Ejecutar creación de nuevo usuario (usa solo 1 vez y luego comenta)
-crearNuevoUsuario('Julian Zapata', 'julian.1009'); // 👈 Modifica estos valores según necesites
-
-// ✅ Iniciar servidor
 startServer();

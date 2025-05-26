@@ -1,28 +1,55 @@
-const express = require('express');
-const cors = require('cors');
-const app = express();
-const port = 3000;
+import React, { useState } from 'react';
 
-app.use(cors()); // Para que el frontend pueda hacer peticiones sin problema
-app.use(express.json());
+function Login() {
+  const [usuario, setUsuario] = useState('');
+  const [clave, setClave] = useState('');
+  const [tipoUsuario, setTipoUsuario] = useState('usuario'); // o 'admin'
+  const [mensaje, setMensaje] = useState('');
 
-app.post('/api/auth/login', (req, res) => {
-  const { usuario, clave, tipoUsuario } = req.body;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  // Validación muy simple solo para ejemplo
-  if (usuario === 'Andrea Serna Gil' && clave === '123456simon' && tipoUsuario === 'admin') {
-    return res.json({ exito: true, mensaje: 'Login correcto' });
-  }
-  if (usuario === 'Julian Zapata' && clave === 'julian.1009' && tipoUsuario === 'usuario') {
-    return res.json({ exito: true, mensaje: 'Login correcto' });
-  }
-  return res.status(401).json({ exito: false, mensaje: 'Usuario o clave incorrectos' });
-});
+    const response = await fetch('http://localhost:3000/api/auth/login', { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario, clave, tipoUsuario })
+    });
 
-app.listen(port, () => {
-  console.log(`Servidor escuchando en el puerto ${port}`);
-});
+    const data = await response.json();
 
+    if(data.exito) {
+      setMensaje(`Bienvenido ${tipoUsuario}`);
+      // Aquí puedes guardar token o hacer redirección
+    } else {
+      setMensaje(data.mensaje);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input 
+        type="text" 
+        placeholder="Usuario" 
+        value={usuario} 
+        onChange={e => setUsuario(e.target.value)} 
+      />
+      <input 
+        type="password" 
+        placeholder="Clave" 
+        value={clave} 
+        onChange={e => setClave(e.target.value)} 
+      />
+      <select value={tipoUsuario} onChange={e => setTipoUsuario(e.target.value)}>
+        <option value="usuario">Usuario</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button type="submit">Ingresar</button>
+      <p>{mensaje}</p>
+    </form>
+  );
+}
+
+export default Login;
 
 
 
